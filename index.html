@@ -1,382 +1,209 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Web Console — Multi Language + Live Preview</title>
+<meta charset="UTF-8">
+<title>Web Dev & Code Runner</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-  :root {
-    --bg: #111;
-    --text: #0f0;
-    --panel: #000;
-    --border: #0f0;
-  }
-
-  body.light {
-    --bg: #ffffff;
-    --text: #222222;
-    --panel: #f4f4f4;
-    --border: #555555;
-  }
-
-  body {
-    background: var(--bg);
-    color: var(--text);
-    transition: .3s;
-  }
-
-  .toggle-theme {
-    position: fixed;
-    top: 12px;
-    right: 12px;
-    background: var(--panel);
-    color: var(--text);
-    border: 2px solid var(--border);
-    padding: 6px 12px;
-    cursor: pointer;
-    border-radius: 8px;
-    font-size: 14px;
-  }
-  :root{--bg:#071017;--panel:#07151a;--accent:#0f9d58;--muted:#9cc2b2;--mono:Consolas,monospace}
-  html,body{height:100%;margin:0;font-family:var(--mono);background:linear-gradient(180deg,#021018,#071017);color:#dff3e6}
-  header{padding:12px 16px;display:flex;align-items:center;gap:12px}
-  header h1{margin:0;font-size:16px}
-  main{display:flex;gap:12px;padding:12px;height:calc(100vh - 86px);box-sizing:border-box}
-  .left{flex:1;display:flex;flex-direction:column;gap:8px;min-width:380px}
-  .right{width:480px;display:flex;flex-direction:column;gap:8px}
-  .panel{background:rgba(0,0,0,0.25);border-radius:10px;padding:10px;display:flex;flex-direction:column;min-height:0}
-  label{font-size:12px;color:var(--muted)}
-  select,input,textarea,button{font-family:var(--mono);font-size:13px}
-  .row{display:flex;gap:8px;align-items:center}
-  .editor{height:320px;border-radius:6px;padding:8px;background:rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.03);color:inherit;white-space:pre;overflow:auto}
-  textarea#code{width:100%;height:320px;background:transparent;border:none;outline:none;color:inherit;resize:vertical}
-  textarea#stdin{width:100%;height:80px;background:transparent;border:1px dashed rgba(255,255,255,0.04);padding:8px;border-radius:6px;color:inherit}
-  #output{flex:1;background:#000;border-radius:6px;padding:8px;overflow:auto;white-space:pre-wrap;border:1px solid rgba(255,255,255,0.04)}
-  .btn{padding:8px 10px;border-radius:6px;border:none;background:var(--accent);color:#fff;cursor:pointer}
-  .btn.secondary{background:#5b9bd5}
-  .small{font-size:12px;color:var(--muted)}
-  #previewFrame{width:100%;height:420px;border:1px solid rgba(255,255,255,0.04);border-radius:6px}
-  .notice{font-size:12px;color:#ffd9d9;padding:6px;border-radius:6px;background:rgba(255,200,200,0.03)}
+*{font-family:Arial;margin:0;padding:0;box-sizing:border-box}
+body{background:#f5f5f5;color:#111;transition:.3s}
+.dark{background:#0d1117;color:#eee}
+header{padding:10px;display:flex;justify-content:space-between;background:#007bff;color:white}
+button{padding:6px 12px;border:none;border-radius:5px;cursor:pointer}
+#tabs button{margin-right:10px;background:#ddd}
+.dark #tabs button{background:#222;color:#ddd}
+#container{padding:10px}
+.panel{display:none}
+.active{display:block}
+#editor{height:250px;border:1px solid #999}
+#console-output{height:180px;background:#000;color:#0f0;padding:6px;overflow-y:auto;font-family:monospace}
+input,textarea,select{padding:8px;width:100%;margin:5px 0;border-radius:5px;border:1px solid #777}
+table{width:100%;border-collapse:collapse;margin:10px 0}
+td,th{border:1px solid #888;padding:8px;text-align:center}
 </style>
 </head>
 <body>
+
 <header>
-  <h1>Web Console — Multi Language + Live Preview</h1>
-  <div class="small">Run code (server), support stdin (for cin), and live HTML preview</div>
+<div><b>Web Dev & Code Runner</b></div>
+<button onclick="toggleTheme()">🌙/☀️</button>
 </header>
 
-<main>
-  <div class="left">
-    <div class="panel">
-      <div class="row" style="justify-content:space-between">
-        <div style="display:flex;gap:8px;align-items:center">
-          <label for="lang">Language</label>
-          <select id="lang">
-            <option value="javascript">JavaScript (node)</option>
-            <option value="python">Python 3</option>
-            <option value="cpp">C++ (g++)</option>
-            <option value="bash">Bash (sh)</option>
-            <option value="ruby">Ruby</option>
-            <option value="html">HTML / CSS / JS (preview)</option>
-          </select>
-          <span class="small" id="lang-hint" style="margin-left:8px;color:var(--muted)">node - multi-line supported</span>
-        </div>
+<div id="tabs">
+<button onclick="showPanel('code')">💻 Code Editor</button>
+<button onclick="showPanel('console')">🧪 Console</button>
+<button onclick="showPanel('file')">📁 File Manager</button>
+<button onclick="showPanel('calc')">🧮 Calculator</button>
+<button onclick="showPanel('web')">🌐 Web Preview</button>
+</div>
 
-        <div style="display:flex;gap:8px">
-          <button class="btn" id="btnRun">Run (Ctrl+Enter)</button>
-          <button class="btn secondary" id="btnClear">Clear Output</button>
-        </div>
-      </div>
+<div id="container">
 
-      <div style="margin-top:8px" class="small notice">
-        Server akan mengeksekusi code. Untuk HTML preview, klik "Preview" dan hasil akan tampil di kanan menggunakan iframe (client-side).
-      </div>
+<!-- CODE EDITOR -->
+<div id="code" class="panel active">
+<select id="language">
+<option value="cpp">C++</option>
+<option value="python">Python</option>
+<option value="javascript">JavaScript</option>
+<option value="html">HTML Preview</option>
+</select>
+<div id="editor">// Write your code here...</div>
+<label>Input (optional):</label>
+<textarea id="stdin" placeholder="cin input..."></textarea>
+<button onclick="runCode()">▶ Run</button>
+</div>
 
-      <div style="margin-top:8px">
-        <div class="editor">
-          <textarea id="code" spellcheck="false" placeholder="// tulis kode di sini"></textarea>
-        </div>
-      </div>
+<!-- CONSOLE -->
+<div id="console" class="panel">
+<h3>Output</h3>
+<div id="console-output"></div>
+</div>
 
-      <div style="margin-top:8px">
-        <label class="small">stdin (jika program butuh input, mis. cin):</label>
-        <textarea id="stdin" placeholder="contoh untuk cin: 3\n10 20 30"></textarea>
-      </div>
+<!-- FILE MANAGER -->
+<div id="file" class="panel">
+<input id="filename" placeholder="filename.cpp">
+<textarea id="filecontent" placeholder="file content..."></textarea>
+<button onclick="saveFile()">💾 Save</button>
+<button onclick="loadFiles()">📥 Refresh</button>
+<table id="filelist"><tr><th>Name</th><th>Open</th><th>Delete</th></tr></table>
+</div>
 
-    </div>
+<!-- CALCULATOR -->
+<div id="calc" class="panel">
+<input id="calc-display" disabled>
+<div>
+<button onclick="addCalc('7')">7</button><button onclick="addCalc('8')">8</button><button onclick="addCalc('9')">9</button>
+<button onclick="addCalc('/')">/</button>
+</div><div>
+<button onclick="addCalc('4')">4</button><button onclick="addCalc('5')">5</button><button onclick="addCalc('6')">6</button>
+<button onclick="addCalc('*')">*</button>
+</div><div>
+<button onclick="addCalc('1')">1</button><button onclick="addCalc('2')">2</button><button onclick="addCalc('3')">3</button>
+<button onclick="addCalc('-')">-</button>
+</div><div>
+<button onclick="addCalc('0')">0</button><button onclick="addCalc('.')">.</button>
+<button onclick="calcEqual()">=</button><button onclick="addCalc('+')">+</button>
+</div>
+<button onclick="clr()">C</button>
+</div>
 
-    <div class="panel" style="flex:1;min-height:140px;margin-top:8px">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <div class="small">Output Console</div>
-        <div class="small">Timeout: <strong id="timeoutLabel">7s</strong></div>
-      </div>
-      <div id="output">Ready. Use Ctrl+Enter or click Run.</div>
-    </div>
-  </div>
+<!-- WEBVIEW -->
+<div id="web" class="panel">
+<iframe id="webview" style="width:100%;height:300px;border:1px solid #444;"></iframe>
+</div>
 
-  <div class="right">
-    <div class="panel" style="flex:0 0 auto">
-      <div style="display:flex;gap:8px;align-items:center;justify-content:space-between">
-        <div class="small">Live Preview / Tools</div>
-        <div style="display:flex;gap:6px">
-          <button class="btn secondary" id="btnPreview">Preview</button>
-          <button class="btn" id="btnTemplate">Insert Template</button>
-        </div>
-      </div>
+</div>
 
-      <div style="margin-top:8px" id="previewArea">
-        <iframe id="previewFrame" sandbox="allow-scripts allow-forms"></iframe>
-        <div style="margin-top:8px" class="small">HTML preview uses <code>iframe.srcdoc</code>. No server upload.</div>
-      </div>
-    </div>
-
-    <!-- optional: file manager / jsonbin (kept from earlier) -->
-    <div class="panel" id="fm-panel" style="display:block">
-      <div class="small">File Manager (JSONBin) — kept from previous version</div>
-      <div style="margin-top:8px">
-        <input id="fm-filename" placeholder="file name (example: main.cpp)" />
-        <div style="height:6px"></div>
-        <textarea id="fm-content" placeholder="file content..." style="width:100%;height:120px"></textarea>
-        <div style="margin-top:8px;display:flex;gap:8px">
-          <button class="btn" id="fm-create">Create/Save</button>
-          <button class="btn secondary" id="fm-refresh">Refresh</button>
-        </div>
-      </div>
-      <div id="fm-list" style="margin-top:8px;max-height:140px;overflow:auto"></div>
-    </div>
-  </div>
-</main>
-
-  <button class="toggle-theme" id="toggleTheme">🌙 Mode</button>
-  
-
-<footer style="padding:8px 12px;font-size:12px;color:var(--muted);border-top:1px solid rgba(255,255,255,0.02)">
-  Server-side execution is dangerous if exposed publicly. Use locally or add sandboxing.
-</footer>
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.0/ace.js"></script>
 <script>
-const themeBtn = document.getElementById("toggleTheme");
+// ------- UI ------- //
+function showPanel(id){
+document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+document.getElementById(id).classList.add('active');
+}
+function toggleTheme(){ document.body.classList.toggle("dark"); }
 
-function setTheme(mode) {
-    document.body.className = mode;
-    localStorage.setItem("theme", mode);
-    themeBtn.textContent = mode === "light" ? "🌞 Light" : "🌙 Dark";
+// ------- EDITOR ------- //
+var editor=ace.edit("editor");
+editor.setTheme("ace/theme/dracula");
+editor.session.setMode("ace/mode/c_cpp");
+
+// ------- JSONBIN CONFIG (YOUR REAL VALUES) ------- //
+const API_KEY="$2a$10$VgGdKhHNGyYIibY1.OQxl.B6kODOFjQwK7asUOTKl67UrFanxbtKe";
+const BIN="6937c4e0d0ea881f401c5109";
+
+// File Manager JSONBIN
+async function loadFiles(){
+const res=await fetch(`https://api.jsonbin.io/v3/b/${BIN}/latest`,{
+headers:{ "X-Master-Key":API_KEY }
+});
+const data=await res.json();
+let files=data.record.files || [];
+let html="<tr><th>Name</th><th>Open</th><th>Delete</th></tr>";
+files.forEach((f,i)=>{
+html+=`<tr><td>${f.name}</td>
+<td><button onclick="openFile(${i})">Open</button></td>
+<td><button onclick="delFile(${i})">X</button></td></tr>`;
+});
+filelist.innerHTML=html;
+}
+async function saveFile(){
+let content=editor.getValue();
+let name=document.getElementById("filename").value;
+if(!name)return alert("Filename?");
+let res=await fetch(`https://api.jsonbin.io/v3/b/${BIN}/latest`,{
+headers:{ "X-Master-Key":API_KEY }
+});
+let data=await res.json();
+let arr=data.record.files||[];
+arr.push({name,content});
+await fetch(`https://api.jsonbin.io/v3/b/${BIN}`,{
+method:"PUT",
+headers:{
+"Content-Type":"application/json",
+"X-Master-Key":API_KEY
+},
+body:JSON.stringify({files:arr})
+});
+alert("Saved!");
+}
+async function openFile(i){
+const res=await fetch(`https://api.jsonbin.io/v3/b/${BIN}/latest`,{
+headers:{ "X-Master-Key":API_KEY }
+});
+const data=await res.json();
+editor.setValue(data.record.files[i].content);
+}
+async function delFile(i){
+const res=await fetch(`https://api.jsonbin.io/v3/b/${BIN}/latest`,{
+headers:{ "X-Master-Key":API_KEY }
+});
+const data=await res.json();
+let arr=data.record.files;
+arr.splice(i,1);
+await fetch(`https://api.jsonbin.io/v3/b/${BIN}`,{
+method:"PUT",
+headers:{
+"Content-Type":"application/json",
+"X-Master-Key":API_KEY
+},
+body:JSON.stringify({files:arr})
+});
+loadFiles();
 }
 
-themeBtn.addEventListener("click", () => {
-    const current = document.body.classList.contains("light") ? "light" : "dark";
-    setTheme(current === "dark" ? "light" : "dark");
-});
 
-// apply saved theme
-setTheme(localStorage.getItem("theme") || "dark");
-/* --------------------------
-   Helper & UI wiring
-   -------------------------- */
-const codeEl = document.getElementById('code');
-const stdinEl = document.getElementById('stdin');
-const outEl = document.getElementById('output');
-const langEl = document.getElementById('lang');
-const btnRun = document.getElementById('btnRun');
-const btnClear = document.getElementById('btnClear');
-const btnPreview = document.getElementById('btnPreview');
-const previewFrame = document.getElementById('previewFrame');
-const btnTemplate = document.getElementById('btnTemplate');
-const langHint = document.getElementById('lang-hint');
 
-const TIMEOUT_LABEL = document.getElementById('timeoutLabel');
+// ------- RUN CODE ------- //
+async function runCode(){
+const lang=document.getElementById("language").value;
+const code=editor.getValue();
+const input=document.getElementById("stdin").value;
+if(lang=="html"){ webview.srcdoc=code; showPanel('web'); return; }
 
-const defaultTemplates = {
-  javascript: `// JavaScript (node) example\nconsole.log("Hello from node");\n// use console.log to write output\n`,
-  python: `# Python 3 example\nn = int(input())\nfor i in range(n):\n    print(i)\n`,
-  cpp: `// C++ example (g++ 17)\n#include <bits/stdc++.h>\nusing namespace std;\nint main(){\n    ios::sync_with_stdio(false);\n    cin.tie(nullptr);\n    int n; if(!(cin>>n)) return 0;\n    for(int i=0;i<n;i++) cout<<i<<\"\\n\";\n    return 0;\n}\n`,
-  bash: `# Bash example\necho "Hello from bash"\n`,
-  ruby: `# Ruby example\nputs "Hello from ruby"\n`,
-  html: `<!doctype html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n<title>Preview</title>\n<style>body{font-family:sans-serif;padding:20px}</style>\n</head>\n<body>\n<h1>Live Preview</h1>\n<p>Edit code and click Preview to refresh.</p>\n<script>\nconsole.log('preview console');\n</script>\n</body>\n</html>`
+let body={
+clientId:"your_id",clientSecret:"your_secret",
+script:code,
+stdin:input,
+language:lang=="cpp"?"cpp17":lang,
+versionIndex:"0"
 };
 
-// initial template
-codeEl.value = defaultTemplates.javascript;
-
-// language hint and template toggle
-function updateLangUI(){
-  const lang = langEl.value;
-  if (lang === 'html') {
-    langHint.textContent = 'Client-side preview — use Preview button';
-  } else if (lang === 'cpp') {
-    langHint.textContent = 'C++: compiled with g++ (send stdin for cin)';
-  } else if (lang === 'python') {
-    langHint.textContent = 'Python 3 — use input() for stdin';
-  } else {
-    langHint.textContent = lang;
-  }
-}
-langEl.addEventListener('change', ()=>{
-  updateLangUI();
-  const lang = langEl.value;
-  codeEl.value = defaultTemplates[lang] || '';
+let res=await fetch("https://api.jdoodle.com/v1/execute",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify(body)
 });
-updateLangUI();
-
-btnTemplate.addEventListener('click', () => {
-  codeEl.value = defaultTemplates[langEl.value] || '';
-});
-
-/* Run handler: sends { language, code, stdin } to /run (except html -> preview) */
-async function runCode() {
-  const lang = langEl.value;
-  const code = codeEl.value;
-  const stdin = stdinEl.value;
-  if (!code.trim()) { appendOutput('[empty code]'); return; }
-
-  if (lang === 'html') {
-    appendOutput('[preview mode] Use Preview to render HTML locally.');
-    return;
-  }
-
-  appendOutput(`>> Running (${lang}) ...`);
-
-  try {
-    const resp = await fetch('/run', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ language: lang, code, stdin })
-    });
-    if (!resp.ok) {
-      const t = await resp.text();
-      appendOutput(`[ERROR] ${resp.status} ${t}`);
-      return;
-    }
-    const json = await resp.json();
-
-    // format response: if compileError
-    if (json.compileError) {
-      appendOutput('[compile error]\n' + (json.compileError || JSON.stringify(json)));
-      return;
-    }
-
-    let out = '';
-    if (json.stdout) out += json.stdout;
-    if (json.stderr) out += (out ? '\\n' : '') + json.stderr;
-    if (json.killed) out += '\\n[Process killed (timeout)]';
-    if (typeof json.code !== 'undefined') out += `\\n[exit code: ${json.code}]`;
-    appendOutput(out || '[no output]');
-  } catch (err) {
-    appendOutput('[Run error] ' + err.message);
-  }
+let result=await res.json();
+console-output.innerHTML=(result.output||"")+"\n";
+showPanel('console');
 }
 
-function appendOutput(txt) {
-  outEl.textContent += txt + "\\n";
-  outEl.scrollTop = outEl.scrollHeight;
-}
-
-btnRun.addEventListener('click', runCode);
-btnClear.addEventListener('click', ()=> outEl.textContent = 'Ready. Use Ctrl+Enter or click Run.\\n');
-
-document.addEventListener('keydown', (e) => {
-  if (e.ctrlKey && e.key === 'Enter') {
-    runCode();
-  }
-});
-
-/* Preview for HTML: use iframe.srcdoc (client-side) */
-btnPreview.addEventListener('click', () => {
-  const lang = langEl.value;
-  if (lang !== 'html') {
-    appendOutput('[Preview] Switch language to HTML to preview.');
-    return;
-  }
-  const html = codeEl.value;
-  previewFrame.srcdoc = html;
-  appendOutput('[Preview] iframe updated (srcdoc)');
-});
-
-/* =========================
-   File Manager (simple reuse)
-   =========================
-   If you used JSONBin earlier, you can keep same keys.
-   For brevity this sample keeps basic create/refresh (uses globals set in previous step if present)
-*/
-const JSONBIN_MASTER_KEY = window.JSONBIN_MASTER_KEY || null;
-const JSONBIN_ID = window.JSONBIN_ID || null;
-const fmList = document.getElementById('fm-list');
-const fmFilename = document.getElementById('fm-filename');
-const fmContent = document.getElementById('fm-content');
-const fmCreate = document.getElementById('fm-create');
-const fmRefresh = document.getElementById('fm-refresh');
-
-async function fm_refresh(){
-  if (!JSONBIN_MASTER_KEY || !JSONBIN_ID) {
-    fmList.innerText = '(JSONBin not configured on this client)';
-    return;
-  }
-  fmList.innerText = 'Loading...';
-  try {
-    const r = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_ID}`, {
-      headers: {'Content-Type':'application/json','X-Master-Key': JSONBIN_MASTER_KEY}
-    });
-    if (!r.ok) throw new Error('status ' + r.status);
-    const j = await r.json();
-    let data = j?.record?.data ?? j?.record ?? j?.data ?? j;
-    const files = data?.files || [];
-    fmList.innerHTML = files.map((f, i) => `<div style="padding:6px;border-bottom:1px solid rgba(255,255,255,0.03)"><b>${escapeHtml(f.name)}</b><div class="small">${new Date(f.updated||0).toLocaleString()}</div><div style="margin-top:6px"><button onclick="fm_load(${i})">Load</button></div></div>`).join('') || '(no files)';
-  } catch (e) {
-    fmList.innerText = 'Error: ' + e.message;
-  }
-}
-window.fm_load = function(i){
-  (async ()=>{
-    try {
-      const r = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_ID}`, {
-        headers: {'Content-Type':'application/json','X-Master-Key': JSONBIN_MASTER_KEY}
-      });
-      const j = await r.json();
-      let data = j?.record?.data ?? j?.record ?? j?.data ?? j;
-      const files = data?.files || [];
-      const f = files[i];
-      if (!f) return alert('file not found');
-      fmFilename.value = f.name;
-      fmContent.value = f.content || '';
-    } catch (e) { alert('load error: ' + e.message); }
-  })();
-};
-fmCreate.addEventListener('click', async ()=>{
-  if (!JSONBIN_MASTER_KEY || !JSONBIN_ID) { return alert('JSONBin not configured'); }
-  const name = fmFilename.value.trim();
-  if (!name) return alert('enter filename');
-  // read current, push/replace
-  try {
-    const r = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_ID}`, {
-      headers: {'Content-Type':'application/json','X-Master-Key': JSONBIN_MASTER_KEY}
-    });
-    const j = await r.json();
-    let data = j?.record?.data ?? j?.record ?? j?.data ?? j;
-    let files = data?.files || [];
-    const idx = files.findIndex(x=>x.name===name);
-    const fileObj = { name, content: fmContent.value, updated: Date.now() };
-    if (idx>=0) files[idx] = fileObj; else files.push(fileObj);
-    // PUT update
-    const put = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_ID}`, {
-      method:'PUT',
-      headers: {'Content-Type':'application/json','X-Master-Key': JSONBIN_MASTER_KEY},
-      body: JSON.stringify({ data: { files } })
-    });
-    if (!put.ok) throw new Error('put failed ' + put.status);
-    appendOutput('[FileMgr] saved ' + name);
-    fm_refresh();
-  } catch (e) {
-    alert('save error: ' + e.message);
-  }
-});
-
-fmRefresh.addEventListener('click', fm_refresh);
-fm_refresh();
-
-/* helpers */
-function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-
+// Calculator
+function addCalc(n){ calc-display.value+=n }
+function clr(){ calc-display.value="" }
+function calcEqual(){ calc-display.value=eval(calc-display.value) }
 </script>
+
 </body>
 </html>
-  
