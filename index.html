@@ -1,59 +1,411 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Multi-Feature Website</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-  <link rel="stylesheet" href="styles.css">
-  <script src="https://requirejs.org/docs/release/2.3.6/minified/require.js"></script>
-  <script src="https://unpkg.com/monaco-editor@0.45.0/min/vs/loader.min.js"></script>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Web Console + FileManager + Calculator</title>
+<style>
+  :root{
+    --bg:#071017;
+    --panel:#07151a;
+    --accent:#0f9d58;
+    --muted:#9cc2b2;
+    --mono: 'Courier New', monospace;
+  }
+  html,body{height:100%;margin:0;font-family:var(--mono);}
+  body{background:linear-gradient(180deg,#021018 0%, #071017 100%);color:#dff3e6;display:flex;flex-direction:column}
+  header{padding:14px 18px;border-bottom:1px solid rgba(255,255,255,0.04);display:flex;gap:12px;align-items:center}
+  header h1{margin:0;font-size:16px;letter-spacing:0.6px}
+  .tabs{display:flex;gap:8px;margin-left:12px}
+  .tab{padding:6px 10px;border-radius:6px;background:transparent;border:1px solid rgba(255,255,255,0.03);cursor:pointer}
+  .tab.active{background:var(--panel);box-shadow:0 2px 8px rgba(0,0,0,0.6);border-color:rgba(255,255,255,0.06)}
+  main{display:flex;gap:18px;padding:18px;flex:1;min-height:0}
+  .col{background:rgba(0,0,0,0.2);border-radius:10px;padding:12px;flex:1;display:flex;flex-direction:column;min-width:0}
+  /* Console */
+  #console{flex:1;background:#000;border-radius:8px;padding:10px;overflow:auto;white-space:pre-wrap;font-size:13px;border:1px solid rgba(255,255,255,0.04)}
+  #input {width:100%;height:110px;background:transparent;border:1px dashed rgba(255,255,255,0.04);margin-top:10px;padding:8px;font-family:var(--mono);color:inherit;resize:vertical}
+  .btn{padding:8px 10px;border-radius:6px;border:none;background:var(--accent);color:#fff;cursor:pointer}
+  .row{display:flex;gap:8px;align-items:center}
+  /* File manager */
+  .file-list{flex:1;overflow:auto;border:1px solid rgba(255,255,255,0.03);padding:8px;border-radius:6px;background:rgba(255,255,255,0.01)}
+  .file-item{padding:8px;border-radius:6px;margin-bottom:6px;background:rgba(0,0,0,0.15);display:flex;justify-content:space-between;align-items:center}
+  .file-item small{color:var(--muted)}
+  .textarea-file{width:100%;height:160px;background:transparent;border:1px solid rgba(255,255,255,0.03);padding:8px;margin-top:8px;font-family:var(--mono)}
+  input[type=text]{width:100%;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:inherit}
+  /* Calculator */
+  .calc-display{height:56px;border-radius:6px;background:rgba(0,0,0,0.18);display:flex;align-items:center;padding:8px;font-size:18px}
+  .calc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}
+  .calc-btn{padding:12px;border-radius:6px;background:rgba(255,255,255,0.03);cursor:pointer;text-align:center}
+  footer{padding:12px;text-align:center;font-size:12px;color:var(--muted);border-top:1px solid rgba(255,255,255,0.02)}
+  .notice{font-size:12px;color:#ffd9d9;padding:8px;border-radius:6px;background:rgba(255,200,200,0.03);margin-bottom:8px}
+</style>
 </head>
 <body>
-  <div class="sidebar">
-    <div class="menu-item" data-feature="editor"><i class="fas fa-code"></i> Code Editor</div>
-    <div class="menu-item" data-feature="console"><i class="fas fa-terminal"></i> Live Console</div>
-    <div class="menu-item" data-feature="calculator"><i class="fas fa-calculator"></i> Calculator</div>
-    <div class="menu-item" data-feature="filemanager"><i class="fas fa-folder"></i> File Manager</div>
-    <div class="menu-item" data-feature="webview"><i class="fas fa-eye"></i> Web View</div>
-    <div class="menu-item" data-feature="debug"><i class="fas fa-bug"></i> Debug Code</div>
+
+<header>
+  <h1>Web Console — Console | File Manager | Calculator</h1>
+  <div class="tabs" id="tabs">
+    <button class="tab active" data-tab="console">Console</button>
+    <button class="tab" data-tab="filemgr">File Manager</button>
+    <button class="tab" data-tab="calc">Calculator</button>
   </div>
-  <div class="main-content">
-    <div id="editor-container" class="feature hidden">
-      <div id="monaco-editor"></div>
-      <button id="run-btn">Run Code</button>
-      <select id="lang-select">
-        <option value="javascript">JavaScript</option>
-        <option value="python">Python</option>
-        <!-- Tambah bahasa lain -->
-      </select>
+</header>
+
+<main>
+  <!-- Console Column -->
+  <section class="col" id="panel-console" style="flex:1.4">
+    <div class="notice">
+      Ctrl+Enter → run. Server runs code with `node -e`. Hati-hati: ini mengeksekusi code di server.
     </div>
-    <div id="console-container" class="feature hidden">
-      <textarea id="console-output" readonly></textarea>
+
+    <div id="console">Web Console Ready ⚡\n</div>
+
+    <textarea id="input" placeholder="Tulis kode JavaScript lalu tekan Ctrl+Enter untuk run…"></textarea>
+    <div style="margin-top:8px" class="row">
+      <button class="btn" id="btn-run">Run (Ctrl+Enter)</button>
+      <button class="btn" id="btn-clear" style="background:#444">Clear</button>
     </div>
-    <div id="calculator-container" class="feature hidden">
-      <input id="calc-display" readonly>
-      <div class="calc-buttons">
-        <button>1</button><button>2</button><!-- Tambah semua operator: +, -, *, /, %, ^, dll. -->
+  </section>
+
+  <!-- File Manager Column -->
+  <section class="col" id="panel-filemgr" style="max-width:430px;display:none">
+    <div class="notice">
+      File Manager terhubung ke JSONBin menggunakan Master Key. Perubahan langsung menimpa isi bin. Gunakan dengan hati-hati.
+    </div>
+
+    <label><small>Nama file</small>
+      <input type="text" id="fm-filename" placeholder="contoh: notes1.txt" />
+    </label>
+
+    <label style="margin-top:6px"><small>Isi file</small>
+      <textarea id="fm-content" class="textarea-file" placeholder="isi file..."></textarea>
+    </label>
+
+    <div style="margin-top:8px" class="row">
+      <button class="btn" id="fm-create">Create / Save</button>
+      <button class="btn" id="fm-update" style="background:#5b9bd5">Update</button>
+      <button class="btn" id="fm-delete" style="background:#d9534f">Delete</button>
+      <button class="btn" id="fm-refresh" style="background:#777">Refresh</button>
+    </div>
+
+    <hr style="margin:12px 0;border:none;border-top:1px solid rgba(255,255,255,0.03)" />
+
+    <div style="font-size:13px;margin-bottom:8px">Files in BIN:</div>
+    <div class="file-list" id="fm-list">Loading...</div>
+  </section>
+
+  <!-- Calculator Column -->
+  <section class="col" id="panel-calc" style="display:none;max-width:360px">
+    <div style="font-weight:600">Calculator</div>
+    <div class="calc-display" id="calc-display">0</div>
+    <div class="calc-grid" id="calc-grid">
+      <!-- buttons appended by JS -->
+    </div>
+    <div style="margin-top:8px" class="row">
+      <button class="btn" id="calc-clear">Clear</button>
+      <button class="btn" id="calc-eval" style="background:#5b9bd5">Eval</button>
+    </div>
+  </section>
+</main>
+
+<footer>
+  Running on local server. To make JSONBin safer, move key to server env and proxy requests.
+</footer>
+
+<script>
+/* ===========================
+   CONFIG: JSONBin credentials
+   ===========================
+   You gave: API key & BIN ID; placed here.
+   Note: JSONBin endpoints require X-Master-Key header for read/update. It's not safe in frontend.
+   Docs: https://api.jsonbin.io/v3 (Read/Update Bins). 
+*/
+const JSONBIN_MASTER_KEY = "$2a$10$VgGdKhHNGyYIibY1.OQxl.B6kODOFjQwK7asUOTKl67UrFanxbtKe"; // YOUR KEY (from user)
+const JSONBIN_ID = "6937c4e0d0ea881f401c5109";
+const JSONBIN_BASE = "https://api.jsonbin.io/v3/b";
+
+/* ===========================
+   Tabs
+   =========================== */
+const tabs = document.getElementById('tabs');
+tabs.addEventListener('click', (e) => {
+  if (!e.target.dataset.tab) return;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  e.target.classList.add('active');
+  const t = e.target.dataset.tab;
+  document.getElementById('panel-console').style.display = t==='console' ? '' : 'none';
+  document.getElementById('panel-filemgr').style.display = t==='filemgr' ? '' : 'none';
+  document.getElementById('panel-calc').style.display = t==='calc' ? '' : 'none';
+});
+
+/* ===========================
+   Console: run code via /run
+   =========================== */
+const input = document.getElementById("input");
+const consoleBox = document.getElementById("console");
+const btnRun = document.getElementById("btn-run");
+const btnClear = document.getElementById("btn-clear");
+
+function appendConsole(text){
+  consoleBox.textContent += text + "\n";
+  consoleBox.scrollTop = consoleBox.scrollHeight;
+}
+
+btnRun.addEventListener('click', runCode);
+btnClear.addEventListener('click', ()=>consoleBox.textContent = 'Web Console Ready ⚡\\n');
+
+input.addEventListener("keydown", (e) => {
+  if (e.ctrlKey && e.key === 'Enter') runCode();
+});
+
+function runCode(){
+  const code = input.value;
+  if (!code.trim()) { appendConsole('[empty code]'); return; }
+  appendConsole('>> ' + code);
+  input.value = '';
+  fetch('/run', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ code })
+  })
+  .then(r=>r.json())
+  .then(d=>{
+    appendConsole(d.output || '[no output]');
+  })
+  .catch(err=>appendConsole('Error: ' + err));
+}
+
+/* ===========================
+   File Manager (JSONBin)
+   - We expect the bin's data to be an array of file objects:
+     { files: [ {name: 'a', content: '...', updated: 123}, ... ] }
+   - If bin empty, we initialize { files: [] }
+   =========================== */
+
+const fmListEl = document.getElementById('fm-list');
+const fmFilename = document.getElementById('fm-filename');
+const fmContent = document.getElementById('fm-content');
+const fmCreateBtn = document.getElementById('fm-create');
+const fmUpdateBtn = document.getElementById('fm-update');
+const fmDeleteBtn = document.getElementById('fm-delete');
+const fmRefreshBtn = document.getElementById('fm-refresh');
+
+let fmState = { files: [] };
+
+async function jsonbin_getBin(){
+  const url = `${JSONBIN_BASE}/${JSONBIN_ID}`;
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Content-Type':'application/json',
+      'X-Master-Key': JSONBIN_MASTER_KEY
+    }
+  });
+  if (!res.ok) throw new Error('GET bin failed: ' + res.status);
+  const js = await res.json();
+  // JSONBin v3 wraps your payload in .record or .data depending; doc uses {record/data}
+  // Their docs: response example has {"record": {"data": ...}} OR {"record": {...}}; adapt:
+  // Many endpoints return { record: { ... } } or { record: { data: ... } }
+  // We'll try to detect the likely shape.
+  if (js.record && js.record.data) return js.record.data;
+  if (js.record) return js.record;
+  if (js?.data) return js.data;
+  return js;
+}
+
+async function jsonbin_putBin(newData){
+  const url = `${JSONBIN_BASE}/${JSONBIN_ID}`;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: {
+      'Content-Type':'application/json',
+      'X-Master-Key': JSONBIN_MASTER_KEY
+    },
+    body: JSON.stringify({ data: newData })
+  });
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error('PUT bin failed: ' + res.status + ' ' + t);
+  }
+  return res.json();
+}
+
+function renderFileList(){
+  fmListEl.innerHTML = '';
+  if (!Array.isArray(fmState.files) || fmState.files.length === 0){
+    fmListEl.textContent = '(no files)';
+    return;
+  }
+  fmState.files.forEach((f, idx)=>{
+    const div = document.createElement('div');
+    div.className = 'file-item';
+    div.innerHTML = `<div>
+        <div style="font-weight:600">${escapeHtml(f.name)}</div>
+        <small>${new Date(f.updated||0).toLocaleString()}</small>
       </div>
-    </div>
-    <div id="filemanager-container" class="feature hidden">
-      <input id="file-name" placeholder="File name">
-      <textarea id="file-content"></textarea>
-      <button id="save-file">Save to JSONBin</button>
-      <ul id="file-list"></ul>
-    </div>
-    <div id="webview-container" class="feature hidden">
-      <iframe id="web-preview"></iframe>
-    </div>
-    <div id="debug-container" class="feature hidden">
-      <textarea id="debug-log" readonly></textarea>
-    </div>
-  </div>
-  <footer>
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXX" crossorigin="anonymous"></script>
-    <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-XXXXXXX" data-ad-slot="XXXXXXX" data-ad-format="auto" data-full-width-responsive="true"></ins>
-    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
-  </footer>
-  <script src="script.js"></script>
+      <div style="display:flex;gap:8px">
+        <button class="tab" data-idx="${idx}" data-action="load">Load</button>
+        <button class="tab" data-idx="${idx}" data-action="edit">Edit</button>
+      </div>`;
+    fmListEl.appendChild(div);
+  });
+}
+
+fmListEl.addEventListener('click', (e)=>{
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  const idx = Number(btn.dataset.idx);
+  const action = btn.dataset.action;
+  const file = fmState.files[idx];
+  if (!file) return;
+  if (action === 'load'){
+    fmFilename.value = file.name;
+    fmContent.value = file.content || '';
+  } else if (action === 'edit'){
+    fmFilename.value = file.name;
+    fmContent.value = file.content || '';
+    fmContent.focus();
+  }
+});
+
+async function fm_load(){
+  appendConsole('[FileMgr] loading bin...');
+  try {
+    const data = await jsonbin_getBin();
+    // normalize to { files: [] }
+    if (!data || (!Array.isArray(data.files) && !Array.isArray(data))) {
+      // if data is array itself -> use it; else try to read data.files
+      if (Array.isArray(data)) fmState.files = data;
+      else if (data.files && Array.isArray(data.files)) fmState.files = data.files;
+      else fmState = { files: [] };
+    } else {
+      fmState.files = Array.isArray(data.files) ? data.files : data;
+    }
+    renderFileList();
+    appendConsole('[FileMgr] loaded ' + fmState.files.length + ' files');
+  } catch (err) {
+    fmListEl.textContent = 'Error loading bin: ' + err.message;
+    appendConsole('[FileMgr] error: ' + err.message);
+  }
+}
+
+function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+async function fm_createOrSave(overwrite=false){
+  const name = fmFilename.value.trim();
+  const content = fmContent.value;
+  if (!name) { alert('masukkan nama file'); return; }
+  // find index
+  const idx = fmState.files.findIndex(f=>f.name === name);
+  if (idx !== -1 && !overwrite) {
+    if (!confirm('File exists. Replace?')) return;
+  }
+  const fileObj = { name, content, updated: Date.now() };
+  if (idx !== -1) fmState.files[idx] = fileObj;
+  else fmState.files.push(fileObj);
+  try {
+    await jsonbin_putBin({ files: fmState.files });
+    appendConsole('[FileMgr] saved ' + name);
+    await fm_load();
+  } catch (err) {
+    appendConsole('[FileMgr] save error: ' + err.message);
+    alert('Save failed: ' + err.message);
+  }
+}
+
+async function fm_update(){
+  const name = fmFilename.value.trim();
+  if (!name) { alert('masukkan nama file untuk update'); return; }
+  const idx = fmState.files.findIndex(f=>f.name === name);
+  if (idx === -1) { alert('file tidak ditemukan'); return; }
+  fmState.files[idx].content = fmContent.value;
+  fmState.files[idx].updated = Date.now();
+  try {
+    await jsonbin_putBin({ files: fmState.files });
+    appendConsole('[FileMgr] updated ' + name);
+    await fm_load();
+  } catch (err) {
+    appendConsole('[FileMgr] update error: ' + err.message);
+    alert('Update failed: ' + err.message);
+  }
+}
+
+async function fm_delete(){
+  const name = fmFilename.value.trim();
+  if (!name) { alert('masukkan nama file untuk dihapus'); return; }
+  const idx = fmState.files.findIndex(f=>f.name === name);
+  if (idx === -1) { alert('file tidak ditemukan'); return; }
+  if (!confirm('Hapus file ' + name + '?')) return;
+  fmState.files.splice(idx,1);
+  try {
+    await jsonbin_putBin({ files: fmState.files });
+    appendConsole('[FileMgr] deleted ' + name);
+    await fm_load();
+  } catch (err) {
+    appendConsole('[FileMgr] delete error: ' + err.message);
+    alert('Delete failed: ' + err.message);
+  }
+}
+
+fmCreateBtn.addEventListener('click', ()=>fm_createOrSave(false));
+fmUpdateBtn.addEventListener('click', fm_update);
+fmDeleteBtn.addEventListener('click', fm_delete);
+fmRefreshBtn.addEventListener('click', fm_load);
+
+// initial load
+fm_load();
+
+/* ===========================
+   Calculator
+   =========================== */
+const calcDisplay = document.getElementById('calc-display');
+const calcGrid = document.getElementById('calc-grid');
+const calcClear = document.getElementById('calc-clear');
+const calcEval = document.getElementById('calc-eval');
+
+let calcExp = '';
+
+const buttons = [
+  '7','8','9','/',
+  '4','5','6','*',
+  '1','2','3','-',
+  '0','.','%','+',
+];
+
+buttons.forEach(b=>{
+  const el = document.createElement('div');
+  el.className = 'calc-btn';
+  el.textContent = b;
+  el.addEventListener('click', ()=> {
+    calcExp += b;
+    calcDisplay.textContent = calcExp || '0';
+  });
+  calcGrid.appendChild(el);
+});
+
+calcClear.addEventListener('click', ()=>{ calcExp = ''; calcDisplay.textContent = '0'; });
+calcEval.addEventListener('click', ()=> {
+  try {
+    // sanitize a bit: allow only numbers and . % () +-*/ 
+    if (!/^[0-9\.\+\-\*\/\%\(\)\s]+$/.test(calcExp)) throw new Error('Invalid characters');
+    // replace % with /100 for simple percent math
+    const expr = calcExp.replace(/%/g, '/100');
+    const result = Function('"use strict";return ('+expr+')')();
+    calcDisplay.textContent = String(result);
+    appendConsole('[Calc] ' + calcExp + ' = ' + result);
+    calcExp = String(result);
+  } catch (e) {
+    calcDisplay.textContent = 'Error';
+    appendConsole('[Calc] eval error: ' + e.message);
+  }
+});
+
+/* ===========================
+   Helper: graceful fallback for JSONBin reading shapes
+   =========================== */
+
+/* End of script */
+</script>
+
 </body>
 </html>
