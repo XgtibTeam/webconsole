@@ -1,22 +1,29 @@
+// server.js
 const express = require('express');
-const cors = require('cors');
-const axios = require('axios'); // Untuk Piston API
+const { exec } = require('child_process');
+const path = require('path');
 const app = express();
-app.use(cors());
-app.use(express.json());
+const port = process.env.PORT || 3000;
 
-app.post('/run-code', async (req, res) => {
-  const { language, version, code } = req.body;
-  try {
-    const response = await axios.post('https://emkc.org/api/v2/piston/execute', {
-      language,
-      version,
-      files: [{ content: code }]
-    });
-    res.json({ output: response.data.run.output, error: response.data.run.stderr });
-  } catch (err) {
-    res.json({ error: 'Execution failed' });
-  }
+app.use(express.json());
+app.use(express.static(__dirname)); // serve index.html and assets
+
+// Simple run endpoint (WARNING: executes arbitrary code on server - use carefully)
+app.post('/run', (req, res) => {
+  const code = req.body.code || '';
+  // escape backticks and backslashes to avoid early termination in node -e
+  const sanitized = String(code).replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$');
+  const command = `node -e \`${sanitized}\``;
+
+  const proc = exec(command, { timeout: 10_000, maxBuffer: 1024 * 1024 }, (err, stdout, stderr) => {
+    if (err && err.killed) {
+      return res.json({ output: 'Process killed (timeout)' });
+    }
+    const out = String(stdout || '') + String(stderr || '') + (err && !err.killed ? (`\nError: ${err.message}`) : '');
+    res.json({ output: out });
+  });
 });
 
-app.listen(3000, () => console.log('Backend running on port 3000'));
+app.listen(port, () => {
+  console.log(`Server running at http://localhost:${port}`);
+});
